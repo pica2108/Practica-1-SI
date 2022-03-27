@@ -1,5 +1,7 @@
 import json
 import sqlite3
+
+import numpy as np
 import pandas as pd
 from src.SQLite import connectBD, insertTable, queryOne, queryAll
 from src.legal import parseLegalJson
@@ -94,3 +96,59 @@ print("Correos mínimos")
 print(df_emails_recibidos['emails'].min())
 print("Correos máximos")
 print(df_emails_recibidos['emails'].max())
+
+print("EJERCICIO 3")
+
+def groupByEmailNumber(emails):
+    df_emails = pd.DataFrame(emails, columns=['emailsPhishing', 'emails'])
+    bins = [0,199,np.inf]
+    labels = ['menos de 200', 'mas de 200']
+    cut = pd.cut(df_emails['emails'], bins=bins, labels=labels)
+    return df_emails.groupby(cut)['emailsPhishing']
+
+emails_permiso_usuario = queryAll(con, "SELECT emailsPhishing, emailsTotal FROM users_info WHERE permisos=0")
+emails_permiso_admin = queryAll(con, "SELECT emailsPhishing, emailsTotal FROM users_info WHERE permisos=1")
+
+print("Numero de observaciones usuarios: ")
+print(groupByEmailNumber(emails_permiso_usuario).count())
+print("Numero de observaciones administradores: ")
+print(groupByEmailNumber(emails_permiso_admin).count())
+
+emails_permiso_usuario_missing = queryAll(con, "SELECT emailsPhishing, emailsTotal FROM users_info WHERE permisos=0 AND emailsPhishing = -1")
+emails_permiso_admin_missing = queryAll(con, "SELECT emailsPhishing, emailsTotal FROM users_info WHERE permisos=1 AND emailsPhishing = -1")
+
+print("Numero de valores ausentes (missing) usuarios: ")
+print(groupByEmailNumber(emails_permiso_usuario_missing).count())
+print("Numero de valores ausentes (missing) administradores: ")
+print(groupByEmailNumber(emails_permiso_admin_missing).count())
+
+emails_permiso_usuario_non_missing = queryAll(con, "SELECT emailsPhishing, emailsTotal FROM users_info WHERE permisos=0 AND emailsPhishing != -1")
+emails_permiso_admin_non_missing = queryAll(con, "SELECT emailsPhishing, emailsTotal FROM users_info WHERE permisos=1 AND emailsPhishing != -1")
+
+group_usuarios = groupByEmailNumber(emails_permiso_usuario_non_missing)
+group_admins = groupByEmailNumber(emails_permiso_admin_non_missing)
+print("Mediana usuarios: ")
+print(group_usuarios.median())
+print("Mediana administradores: ")
+print(group_admins.median())
+
+print("Media usuarios: ")
+print(group_usuarios.mean())
+print("Media administradores: ")
+print(group_admins.mean())
+
+print("Varianza usuarios: ")
+print(group_usuarios.var())
+print("Varianza administradores: ")
+print(group_admins.var())
+
+print("Max usuarios: ")
+print(group_usuarios.max())
+print("Max administradores: ")
+print(group_admins.max())
+print("Min usuarios: ")
+print(group_usuarios.min())
+print("Min administradores: ")
+print(group_admins.min())
+
+
