@@ -1,24 +1,22 @@
-import json
-import sqlite3
-
+import altair as alt
 import numpy as np
 import pandas as pd
-from src.SQLite import connectBD, insertTable, queryOne, queryAll
+from src.SQLite import connectBD, insertTable, queryOne, queryAll, sql_remove_all_tables, close_connection
 from src.legal import parseLegalJson
 from src.users import parseUsersInfo, parseUsersDatesIps
-from src.utils import readJson
+import matplotlib.pyplot as plt
 
 # LECTURA DE LOS JSON Y CREACION DE TABLAS
 
 con = connectBD()
 legal_table = parseLegalJson()
-#insertTable(con, legal_table, "legal")
+insertTable(con, legal_table, "legal")
 
 users_table_info = parseUsersInfo()
 users_table_ips_dates = parseUsersDatesIps()
 
-#insertTable(con, users_table_info, "users_info")
-#insertTable(con, users_table_ips_dates, "users_ips_dates")
+insertTable(con, users_table_info, "users_info")
+insertTable(con, users_table_ips_dates, "users_ips_dates")
 
 print("EJERCICIO 2.MUESTRAS")
 
@@ -152,3 +150,31 @@ print("Min administradores: ")
 print(group_admins.min())
 
 
+print("EJERCICIO 4")
+users_criticos = queryAll(con, "SELECT emailsPhishing, emailsCliclados, username FROM users_info WHERE emailsPhishing > 0")
+df_users_criticos = pd.DataFrame(users_criticos, columns=['emailsPhishing', 'emailsCliclados', 'username'])
+df_users_criticos['criticidad'] = df_users_criticos['emailsCliclados']/df_users_criticos['emailsPhishing']
+df_users_criticos = df_users_criticos.sort_values(by=['criticidad'], ascending=False, ignore_index=True).loc[:9]
+#df_users_criticos.plot(kind='bar', x='username', y='criticidad')
+
+webs_politicas = queryAll(con, "SELECT cookies, aviso, proteccion_de_datos, web FROM legal")
+df_webs_politicas = pd.DataFrame(webs_politicas, columns=['cookies', 'aviso', 'proteccion_de_datos', 'web'])
+df_webs_politicas = df_webs_politicas.sort_values(by=['cookies', 'aviso', 'proteccion_de_datos'], ignore_index=True).loc[:4]
+#df_webs_politicas.plot(kind='bar', x='web')
+
+webs_politica_anio = queryAll(con, "SELECT cookies, aviso, proteccion_de_datos, web, creacion FROM legal")
+df_webs_politica_anio = pd.DataFrame(webs_politica_anio, columns=['cookies', 'aviso', 'proteccion_de_datos', 'web', 'creacion'])
+df_webs_politica_anio['cumple'] = df_webs_politica_anio['cookies'] * df_webs_politica_anio['aviso'] * df_webs_politica_anio['proteccion_de_datos']
+
+cumplen = df_webs_politica_anio.loc[df_webs_politica_anio['cumple'] == 1].groupby(['creacion'])['web'].count()
+no_cumplen = df_webs_politica_anio.loc[df_webs_politica_anio['cumple'] == 0].groupby(['creacion'])['web'].count()
+
+ax = plt.gca()
+cumplen.plot(kind='line',x='creacion', y='cumple')
+no_cumplen.plot(kind='line',x='creacion',y='cumple', color='red')
+
+
+plt.show()
+
+sql_remove_all_tables(con)
+close_connection(con)
