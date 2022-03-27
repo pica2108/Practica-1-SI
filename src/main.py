@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 # LECTURA DE LOS JSON Y CREACION DE TABLAS
 
 con = connectBD()
+sql_remove_all_tables(con)
+
 legal_table = parseLegalJson()
 insertTable(con, legal_table, "legal")
 
@@ -176,5 +178,4 @@ no_cumplen.plot(kind='line',x='creacion',y='cumple', color='red')
 
 plt.show()
 
-sql_remove_all_tables(con)
 close_connection(con)
